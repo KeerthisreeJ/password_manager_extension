@@ -1,7 +1,7 @@
 // api.js – all REST calls to the SecureVault backend
 // Mirrors the Dart AuthService HTTP layer exactly
 
-const BASE_URL = 'http://127.0.0.1:8000';
+const BASE_URL = 'https://vault-server-16o7.onrender.com';
 
 async function apiFetch(path, options = {}) {
   const url = `${BASE_URL}${path}`;
