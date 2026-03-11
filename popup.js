@@ -94,6 +94,17 @@ function bufferToBase64url(buffer) {
 async function init() {
   const session = await getSession();
   showScreen('login');
+
+  if (session?.token && session?.username && session?.password) {
+    try {
+      await onLoginSuccess(session.token, session.username, session.password);
+      return; // Stop further init so we stay on the vault screen
+    } catch (err) {
+      console.error('[SecureVault] Auto-login failed:', err);
+      // Fall through to show the login screen
+    }
+  }
+
   if (session?.token && session?.username) {
     _username = session.username;
     // Pre-fill username but keep it editable — password is never cached for security,
