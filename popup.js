@@ -16,9 +16,9 @@ function getSession() {
     chrome.runtime.sendMessage({ type: 'GET_SESSION' }, resolve);
   });
 }
-function setSession(token, username, password) {
+function setSession(token, username, password, vault) {
   return new Promise(resolve => {
-    chrome.runtime.sendMessage({ type: 'SET_SESSION', token, username, password }, resolve);
+    chrome.runtime.sendMessage({ type: 'SET_SESSION', token, username, password, vault }, resolve);
   });
 }
 function clearSession() {
@@ -116,6 +116,47 @@ async function init() {
   }
 }
 
+async function checkPendingSaves() {
+  const data = await chrome.storage.session.get(['pendingSave']);
+  if (data.pendingSave) {
+    const { hostname, username, password, timestamp } = data.pendingSave;
+    // Expire pending saves older than 10 minutes
+    if (Date.now() - timestamp < 10 * 60 * 1000) {
+      if (confirm(`Save new password for ${hostname} (${username}) to your vault?`)) {
+        await saveToVault(hostname, username, password);
+      }
+    }
+    await chrome.storage.session.remove(['pendingSave']);
+  }
+}
+
+async function saveToVault(hostname, username, password) {
+  try {
+    const key = `${hostname} (${username})`;
+    _vault[key] = {
+      password,
+      category: 'Other',
+      updatedAt: new Date().toISOString().split('T')[0]
+    };
+
+    // Re-encrypt and upload
+    const encryptedBlob = await encryptVault(_vault, _password);
+    const success = await updateVault(_token, encryptedBlob);
+
+    if (success) {
+      // Update session with new vault
+      await setSession(_token, _username, _password, _vault);
+      renderVault();
+      alert('Password saved successfully!');
+    } else {
+      alert('Failed to save to server.');
+    }
+  } catch (err) {
+    console.error('[SecureVault] Save error:', err);
+    alert('Failed to save password: ' + err.message);
+  }
+}
+
 // ── Login flow ─────────────────────────────────────────────────────────────
 
 $('btn-login').addEventListener('click', handleLogin);
@@ -197,9 +238,6 @@ async function onLoginSuccess(token, username, password) {
   _password = password;
   _pendingVerifier = null;
 
-  await setSession(token, username, password);
-  console.log("Session stored");
-
   const vaultResp = await getVault(token);
   console.log("Vault response:", vaultResp);
 
@@ -211,8 +249,14 @@ async function onLoginSuccess(token, username, password) {
     _vault = {};
   }
 
+  await setSession(token, username, password, _vault);
+  console.log("Session stored");
+
   renderVault();
   showScreen('vault');
+
+  // Check for pending saves after unlocking the vault
+  await checkPendingSaves();
 }
 
 // ── Vault rendering ────────────────────────────────────────────────────────
