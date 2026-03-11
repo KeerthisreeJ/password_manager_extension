@@ -2,16 +2,16 @@
 // Handles session persistence in chrome.storage.local
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.type === 'GET_SESSION') {
-    chrome.storage.local.get(['token', 'username', 'password'], (data) => {
-      sendResponse({ token: data.token || null, username: data.username || null, password: data.password || null });
-    });
-    return true; // keep channel open for async
-  }
-
   if (msg.type === 'SET_SESSION') {
     chrome.storage.local.set({ token: msg.token, username: msg.username, password: msg.password }, () => {
       sendResponse({ ok: true });
+    });
+    return true;
+  }
+
+  if (msg.type === 'GET_SESSION') {
+    chrome.storage.local.get(['token', 'username', 'password'], (data) => {
+      sendResponse({ token: data.token || null, username: data.username || null, password: data.password || null });
     });
     return true;
   }

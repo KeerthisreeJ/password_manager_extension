@@ -1,8 +1,8 @@
 // popup.js – Main extension logic
 // Handles: login → MFA → vault display → autofill / copy
 
-import { hexToBytes, bytesToHex, randomBytes, buildVerifier, encryptVault, decryptVault } from './crypto.js';
-import { getAuthSalt, apiLogin, apiLoginMfa, checkMfaStatus, getVault, updateVault, apiLogout } from './api.js';
+import { hexToBytes, bytesToHex, randomBytes, buildVerifier, encryptVault, decryptVault, encryptMasterPassword, decryptMasterPassword } from './crypto.js';
+import { getAuthSalt, apiLogin, apiLoginMfa, checkMfaStatus, getVault, updateVault, apiLogout, getPasskeyRegisterOptions, verifyPasskeyRegister, getPasskeyLoginOptions, verifyPasskeyLogin } from './api.js';
 
 await sodium.ready;
 console.log("[SecureVault] libsodium ready");
@@ -67,6 +67,27 @@ let _username = null;
 let _password = null; // master password (in-memory only)
 let _vault = {};   // decrypted vault { site_key: {password, category, updatedAt} }
 let _pendingVerifier = null; // for MFA flow
+
+// ── WebAuthn Utility ───────────────────────────────────────────────────────
+function base64urlToBuffer(base64url) {
+  const padding = '='.repeat((4 - base64url.length % 4) % 4);
+  const base64 = (base64url + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray.buffer;
+}
+
+function bufferToBase64url(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
 
 // ── Init ───────────────────────────────────────────────────────────────────
 
@@ -160,6 +181,52 @@ async function handleLogin() {
     showError('login-error', err.message || 'Login failed. Is the server running?');
   } finally {
     setLoading('btn-login', 'btn-login-spinner', false);
+  }
+}
+
+$('btn-passkey-login').addEventListener('click', handlePasskeyLogin);
+
+async function handlePasskeyLogin() {
+  hideError('login-error');
+  const username = $('login-username').value.trim();
+  if (!username) { showError('login-error', 'Please enter your username first.'); return; }
+
+  setLoading('btn-passkey-login', 'btn-passkey-login-spinner', true);
+  try {
+    const opts = await getPasskeyLoginOptions(username);
+    // opts is the PublicKeyCredentialRequestOptions
+    opts.challenge = base64urlToBuffer(opts.challenge);
+    if (opts.allowCredentials) {
+      for (let c of opts.allowCredentials) c.id = base64urlToBuffer(c.id);
+    }
+
+    const credential = await navigator.credentials.get({ publicKey: opts });
+    const responsePayload = {
+      id: credential.id,
+      rawId: bufferToBase64url(credential.rawId),
+      response: {
+        clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+        authenticatorData: bufferToBase64url(credential.response.authenticatorData),
+        signature: bufferToBase64url(credential.response.signature),
+        userHandle: credential.response.userHandle ? bufferToBase64url(credential.response.userHandle) : null
+      },
+      type: credential.type
+    };
+
+    const resp = await verifyPasskeyLogin(username, responsePayload);
+
+    // Decrypt the master password stored in DB with local AES key
+    chrome.storage.local.get(['passkeyAesKey'], async function (result) {
+      if (!result.passkeyAesKey) throw new Error("Local device key lost. Cannot decrypt vault.");
+      const masterPass = await decryptMasterPassword(JSON.parse(resp.encrypted_master), result.passkeyAesKey);
+      await onLoginSuccess(resp.token, username, masterPass);
+    });
+
+  } catch (err) {
+    console.error('[SecureVault] Passkey error:', err);
+    showError('login-error', err.message || 'Passkey login failed.');
+  } finally {
+    setLoading('btn-passkey-login', 'btn-passkey-login-spinner', false);
   }
 }
 
@@ -279,6 +346,10 @@ $('btn-logout').addEventListener('click', async () => {
   const hint = $('login-username-hint');
   if (hint) hint.classList.add('hidden');
   showScreen('login');
+});
+
+$('btn-register-passkey').addEventListener('click', () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL('register-passkey.html') });
 });
 
 // ── Detail screen ──────────────────────────────────────────────────────────
