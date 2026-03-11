@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Passkey - SecureVault</title>
+    <style>
+        body {
+            background-color: #0f1117;
+            color: #e8eaf0;
+            font-family: 'Inter', system-ui, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background: #1a1d27;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.07);
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        p {
+            color: #8b8fa8;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #7c6ff7, #5a50d6);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 1rem;
+            width: 100%;
+            transition: opacity 0.2s;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status {
+            margin-top: 20px;
+            font-size: 0.9rem;
+        }
+
+        .success {
+            color: #2ecc71;
+        }
+
+        .error {
+            color: #ff5c6a;
+        }
+    </style>
+    <script src="lib/libsodium.js"></script>
+    <script src="lib/libsodium-wrappers.js"></script>
+    <script type="module" src="register-passkey.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <h1 id="title">🔐 Setup your Passkey</h1>
+        <p id="desc">Register your device to unlock your vault with your face or fingerprint next time.</p>
+        <button id="btn-start" class="btn">Create Passkey Now</button>
+        <div id="status" class="status"></div>
+    </div>
+</body>
+
+</html>

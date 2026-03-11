@@ -98,6 +98,36 @@ export async function decryptVault(blob, password) {
   return JSON.parse(new TextDecoder().decode(plaintext));
 }
 
+// ── Master Password Encryption (for Passkeys) ─────────────────────────────
+// Encrypt the master password using a randomly generated AES (XChaCha20) key.
+
+export async function encryptMasterPassword(passwordStr) {
+  const sodium = await getSodium();
+  const keyBytes = sodium.randombytes_buf(sodium.crypto_secretbox_KEYBYTES);
+  const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES);
+  const plainBytes = new TextEncoder().encode(passwordStr);
+  const cipherBytes = sodium.crypto_secretbox_easy(plainBytes, nonce, keyBytes);
+
+  return {
+    keyHex: bytesToHex(keyBytes),
+    encryptedPass: {
+      nonce: bytesToHex(nonce),
+      ciphertext: bytesToHex(cipherBytes)
+    }
+  };
+}
+
+export async function decryptMasterPassword(encryptedPass, keyHex) {
+  const sodium = await getSodium();
+  const keyBytes = hexToBytes(keyHex);
+  const nonce = hexToBytes(encryptedPass.nonce);
+  const cipherBytes = hexToBytes(encryptedPass.ciphertext);
+
+  const plainBytes = sodium.crypto_secretbox_open_easy(cipherBytes, nonce, keyBytes);
+  if (!plainBytes) throw new Error("Encryption key invalid or data corrupted.");
+  return new TextDecoder().decode(plainBytes);
+}
+
 // ── Auth helpers ──────────────────────────────────────────────────────────
 
 // Derive and return the verifier hex for login/register
