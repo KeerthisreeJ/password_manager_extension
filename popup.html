@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SecureVault</title>
+  <link rel="stylesheet" href="popup.css" />
+
+  <script src="lib/argon2-bundled.min.js"></script>
+
+  <script src="lib/libsodium.js"></script>
+  <script src="lib/libsodium-wrappers.js"></script>
+
+  <script type="module" src="popup.js"></script>
+</head>
+
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════════════ LOGIN -->
+  <div id="screen-login" class="screen active">
+    <div class="header">
+      <span class="logo-icon">🔐</span>
+      <div>
+        <h1>SecureVault</h1>
+        <p class="tagline">Your passwords, anywhere</p>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="login-username">Username</label>
+      <div class="input-wrap">
+        <span class="input-icon">👤</span>
+        <input type="text" id="login-username" placeholder="Enter username" autocomplete="off" />
+      </div>
+      <p id="login-username-hint" class="hint hidden" style="margin-top:4px;font-size:0.78rem;color:#8899aa;"></p>
+    </div>
+
+    <div class="form-group">
+      <label for="login-password">Master Password</label>
+      <div class="input-wrap">
+        <span class="input-icon">🔑</span>
+        <input type="password" id="login-password" placeholder="Enter master password" />
+        <button class="toggle-pass" id="toggle-login-pass" title="Show/hide">👁</button>
+      </div>
+    </div>
+
+    <div id="login-error" class="error-box hidden"></div>
+
+    <button id="btn-login" class="btn-primary">
+      <span id="btn-login-text">Unlock Vault</span>
+      <span id="btn-login-spinner" class="spinner hidden"></span>
+    </button>
+
+    <p class="hint">
+      <span class="muted">Need an account? Use the mobile/web app to register.</span>
+    </p>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════ MFA -->
+  <div id="screen-mfa" class="screen">
+    <div class="header">
+      <span class="logo-icon">🛡️</span>
+      <div>
+        <h1>Two-Factor Auth</h1>
+        <p class="tagline">Enter your authenticator code</p>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="mfa-code">6-Digit Code</label>
+      <div class="input-wrap">
+        <span class="input-icon">📱</span>
+        <input type="text" id="mfa-code" placeholder="000000" maxlength="6" inputmode="numeric" pattern="[0-9]*"
+          style="letter-spacing:0.35em;font-size:1.3rem;" />
+      </div>
+    </div>
+
+    <div id="mfa-error" class="error-box hidden"></div>
+
+    <button id="btn-mfa" class="btn-primary">
+      <span id="btn-mfa-text">Verify</span>
+      <span id="btn-mfa-spinner" class="spinner hidden"></span>
+    </button>
+
+    <button id="btn-mfa-back" class="btn-ghost">← Back</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ VAULT -->
+  <div id="screen-vault" class="screen">
+
+    <div class="vault-header">
+      <div class="vault-user-info">
+        <span class="vault-avatar" id="vault-avatar">?</span>
+        <div>
+          <p class="vault-username" id="vault-username-label"></p>
+          <p class="vault-subtitle">Vault unlocked</p>
+        </div>
+      </div>
+      <button id="btn-logout" class="icon-btn" title="Logout">⏏</button>
+    </div>
+
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="vault-search" placeholder="Search credentials…" />
+    </div>
+
+    <div id="vault-list" class="vault-list"></div>
+
+    <div id="vault-empty" class="vault-empty hidden">
+      <span>🗝️</span>
+      <p>No credentials yet.<br />Add them in the app.</p>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════════════════════════════════ CREDENTIAL DETAIL -->
+  <div id="screen-detail" class="screen">
+    <div class="detail-header">
+      <button id="btn-detail-back" class="icon-btn">←</button>
+      <h2 id="detail-name"></h2>
+      <span id="detail-category-badge" class="cat-badge"></span>
+    </div>
+
+    <div class="detail-body">
+      <div class="detail-row">
+        <span class="detail-label">Username / Site</span>
+        <span class="detail-value" id="detail-key"></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Password</span>
+        <div class="detail-pass-wrap">
+          <span class="detail-value masked" id="detail-pass">••••••••</span>
+          <button class="icon-btn small" id="btn-reveal-pass" title="Reveal">👁</button>
+        </div>
+      </div>
+      <div class="detail-row" id="detail-updated-row">
+        <span class="detail-label">Updated</span>
+        <span class="detail-value" id="detail-updated"></span>
+      </div>
+    </div>
+
+    <div class="detail-actions">
+      <button class="btn-primary" id="btn-copy-pass">📋 Copy Password</button>
+      <button class="btn-secondary" id="btn-autofill">⚡ Autofill on Page</button>
+    </div>
+
+    <div id="detail-feedback" class="feedback-box hidden"></div>
+  </div>
+</body>
+
+</html>
