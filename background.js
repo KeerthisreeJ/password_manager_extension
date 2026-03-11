@@ -2,16 +2,16 @@
 // Handles session persistence in chrome.storage.session (cleared on browser close)
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.type === 'GET_SESSION') {
-    chrome.storage.session.get(['token', 'username'], (data) => {
-      sendResponse({ token: data.token || null, username: data.username || null });
+  if (msg.type === 'SET_SESSION') {
+    chrome.storage.session.set({ token: msg.token, username: msg.username, password: msg.password }, () => {
+      sendResponse({ ok: true });
     });
-    return true; // keep channel open for async
+    return true;
   }
 
-  if (msg.type === 'SET_SESSION') {
-    chrome.storage.session.set({ token: msg.token, username: msg.username }, () => {
-      sendResponse({ ok: true });
+  if (msg.type === 'GET_SESSION') {
+    chrome.storage.session.get(['token', 'username', 'password'], (data) => {
+      sendResponse({ token: data.token || null, username: data.username || null, password: data.password || null });
     });
     return true;
   }

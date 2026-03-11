@@ -76,3 +76,42 @@ export async function apiLogout(token) {
     await apiFetch('/logout', { method: 'POST', headers: { Authorization: token } });
   } catch (_) { /* ignore */ }
 }
+
+// ── Passkeys ──
+export async function getPasskeyRegisterOptions(token) {
+  const res = await apiFetch('/auth/passkey/register/options', {
+    method: 'POST',
+    headers: { Authorization: token }
+  });
+  if (!res.ok) throw new Error('Failed to get register options');
+  return res.json();
+}
+
+export async function verifyPasskeyRegister(token, username, responsePayload, encryptedMasterHex) {
+  const res = await apiFetch('/auth/passkey/register/verify', {
+    method: 'POST',
+    headers: { Authorization: token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, response: responsePayload, encrypted_master: encryptedMasterHex })
+  });
+  if (!res.ok) throw new Error('Passkey registration failed');
+  return res.json();
+}
+
+export async function getPasskeyLoginOptions(username) {
+  const res = await apiFetch(`/auth/passkey/login/options?username=${encodeURIComponent(username)}`, {
+    method: 'POST'
+  });
+  if (res.status === 404) throw new Error('No passkey found for this user. Register it first!');
+  if (!res.ok) throw new Error('Failed to reach server for Passkey login.');
+  return res.json();
+}
+
+export async function verifyPasskeyLogin(username, responsePayload) {
+  const res = await apiFetch('/auth/passkey/login/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, response: responsePayload })
+  });
+  if (!res.ok) throw new Error('Passkey login failed');
+  return res.json();
+}
