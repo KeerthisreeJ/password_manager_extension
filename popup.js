@@ -16,9 +16,9 @@ function getSession() {
     chrome.runtime.sendMessage({ type: 'GET_SESSION' }, resolve);
   });
 }
-function setSession(token, username) {
+function setSession(token, username, password) {
   return new Promise(resolve => {
-    chrome.runtime.sendMessage({ type: 'SET_SESSION', token, username }, resolve);
+    chrome.runtime.sendMessage({ type: 'SET_SESSION', token, username, password }, resolve);
   });
 }
 function clearSession() {
@@ -73,6 +73,17 @@ let _pendingVerifier = null; // for MFA flow
 async function init() {
   const session = await getSession();
   showScreen('login');
+
+  if (session?.token && session?.username && session?.password) {
+    try {
+      await onLoginSuccess(session.token, session.username, session.password);
+      return; // Stop further init so we stay on the vault screen
+    } catch (err) {
+      console.error('[SecureVault] Auto-login failed:', err);
+      // Fall through to show the login screen
+    }
+  }
+
   if (session?.token && session?.username) {
     _username = session.username;
     // Pre-fill username but keep it editable — password is never cached for security,
@@ -186,7 +197,7 @@ async function onLoginSuccess(token, username, password) {
   _password = password;
   _pendingVerifier = null;
 
-  await setSession(token, username);
+  await setSession(token, username, password);
   console.log("Session stored");
 
   const vaultResp = await getVault(token);
