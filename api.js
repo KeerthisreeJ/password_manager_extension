@@ -83,7 +83,7 @@ export async function getPasskeyRegisterOptions(token) {
     method: 'POST',
     headers: { Authorization: token }
   });
-  if (!res.ok) throw new Error('Failed to get register options');
+  if (!res.ok) throw new Error(`Failed to get register options (Status: ${res.status})`);
   return res.json();
 }
 
@@ -93,7 +93,7 @@ export async function verifyPasskeyRegister(token, username, responsePayload, en
     headers: { Authorization: token, 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, response: responsePayload, encrypted_master: encryptedMasterHex })
   });
-  if (!res.ok) throw new Error('Passkey registration failed');
+  if (!res.ok) throw new Error(`Passkey registration failed (Status: ${res.status})`);
   return res.json();
 }
 
